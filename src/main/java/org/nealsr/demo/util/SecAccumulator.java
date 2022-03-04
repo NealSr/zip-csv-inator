@@ -1,51 +1,54 @@
 package org.nealsr.demo.util;
 
+import java.text.NumberFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.nealsr.demo.domain.CsvRecord;
+
+/**
+ * Utility for adding up the metrics from the zipped CSV file.  Tracks unique IPs, Status Code frequency, and total bytes.
+ */
 public class SecAccumulator {
-
-    //ip,date,time,zone,cik,accession,extention,code,size,idx,norefer,noagent,find,crawler,browser
-    //0  1    2    3    4   5         6         7    8    9   10      11      12   13      14
-    private final int ip_col = 0;
-    private final int code_col = 7;
-    private final int size_col = 8;
-
     private Set<String> ipAddressSet = new HashSet<String>();
     private Map<Integer, Integer> statusCodeMap = new HashMap<Integer, Integer>();
     private Long totalBytes = Long.valueOf(0);
+    private NumberFormat numberFormat = NumberFormat.getNumberInstance();
 
-    private static String STATE_FORMAT = "Unique IPs: %d, Total Bytes: %d";
+    /**
+     * Processes a CsvRecord and increments the metrics accordingly.
+     * @param record the CsvRecord to process.
+     */
+    public void processRow(CsvRecord record) {
+        ipAddressSet.add(record.getIp());
 
-    public void processRow(String csv) {
-        String[] columns = csv.split(",");
-        if (columns.length != 15) {
-            // do nothing - invalid
+        int code = record.getCode();
+        if (statusCodeMap.containsKey(code)) {
+            statusCodeMap.put(code, statusCodeMap.get(code) + 1);
         } else {
-            String ip = columns[ip_col];
-            String code = columns[code_col];
-            String bytes = columns[size_col];
-            System.out.println(String.format("%s,%s,%s", ip, code, bytes));
-            //int code = Integer.parseInt(columns[code_col]);
-            // Long bytes = Long.parseLong(columns[size_col]);
-            // totalBytes += bytes;
-
-            ipAddressSet.add(ip);
-//            if (statusCodeMap.containsKey(code)) {
-//                statusCodeMap.put(code, statusCodeMap.get(code) + 1);
-//            } else {
-//                statusCodeMap.put(code, 1);
-//            }
+            statusCodeMap.put(code, 1);
         }
+
+        totalBytes += record.getSize();
     }
 
+    /**
+     * Prints the current state to the console, with some formatting.
+     */
     public void printCurrentState() {
-        System.out.println("Unique IPs: " + ipAddressSet.size());
-        System.out.println("Total Bytes: " + totalBytes);
+        System.out.println("Unique IPs: " + numberFormat.format(ipAddressSet.size()));
+        System.out.println("Total Bytes: " + numberFormat.format(totalBytes));
         System.out.println("Status Codes:");
-        System.out.println(statusCodeMap);
+        for (Map.Entry<Integer, Integer> entry : statusCodeMap.entrySet()) {
+            if (entry.getKey() == 0) {
+                System.out.println("\tUKN: " + numberFormat.format(entry.getValue()));
+            } else {
+                System.out.println("\t" + entry.getKey() + ": " + numberFormat.format(entry.getValue()));
+            }
+        }
+        // additional line for breaking apart logs
+        System.out.println();
     }
-
 }
